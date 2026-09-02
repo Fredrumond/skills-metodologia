@@ -11,7 +11,7 @@ problem-qualify
       ↓  (Pronto para Discovery? Sim)
 discovery
       ↓  (Pronto para Planejamento? Sim)
-plan  ···  adr-simplificado  (quando houver decisão arquitetural)
+plan  ···  plan-slice  ···  adr-simplificado  (quando houver decisão arquitetural)
       ↓  implementação
 delivery-summary  ···  document-technical-reference  (quando afetar onboarding)
 ```
@@ -23,6 +23,7 @@ A ordem é a do ciclo de trabalho. Skills pontilhadas são opcionais e disparam 
 | Qualificar o card | [`problem-qualify`](skills/cursor/problem-qualify/SKILL.md) | Score 0–100 + lacunas / contexto para Discovery | Só no chat |
 | Discovery | [`discovery`](skills/cursor/discovery/SKILL.md) | Documento de Discovery | Chat; arquivo em `docs/discovery/` se pronto para planejamento |
 | Plano técnico | [`plan`](skills/cursor/plan/SKILL.md) | Plano de implementação | Só no chat |
+| Plano fatiado | [`plan-slice`](skills/cursor/plan-slice/SKILL.md) | Plano em fatias de execução isoladas | Só no chat |
 | Decisão de arquitetura | [`adr-simplificado`](skills/cursor/adr-simplificado/SKILL.md) | ADR | `docs/adr/` |
 | Referência técnica | [`document-technical-reference`](skills/cursor/document-technical-reference/SKILL.md) | Tópicos de onboarding | `docs/references/` |
 | Handoff da entrega | [`delivery-summary`](skills/cursor/delivery-summary/SKILL.md) | Corpo do PR + resumo de negócio | Só no chat |
@@ -64,6 +65,19 @@ Gera o planejamento técnico da atividade, só no chat.
 - Se surgir decisão arquitetural, sugere `adr-simplificado` em vez de registrar o ADR ela mesma.
 
 **Quando usar:** plano técnico, planejamento de implementação, transformar Discovery em plano de execução.
+
+### [`plan-slice`](skills/cursor/plan-slice/SKILL.md)
+
+Gera um plano técnico fatiado em unidades de execução isoladas, só no chat. Não substitui `plan`: use `plan` para um plano único; use esta skill para fatiar a execução.
+
+- Cada fatia é um brief auto-contido (escopo, fronteira, contrato de saída, testes da fatia, critério de pronto) para o próximo agente implementar isolado.
+- Entrega cada fatia num fence Markdown copiável **ou** no passo de execução (pedir a próxima fatia pendente).
+- Só fatia quando houver fronteira real; demanda pequena vira **Fatia única**, com o mesmo template.
+- Confronta decisões em aberto e faz triagem de testes **antes** do plano final.
+- Restrições globais de segurança, rollout e observabilidade entram no plano-pai e se repetem só o necessário em cada fatia.
+- **Não** persiste arquivo, não escreve código e não cria ticket, branch ou PR.
+
+**Quando usar:** plan-slice, plano fatiado, fatias de execução, escopo isolado para o agente, transformar Discovery em plano executável uma fatia por vez.
 
 ### [`adr-simplificado`](skills/cursor/adr-simplificado/SKILL.md)
 
