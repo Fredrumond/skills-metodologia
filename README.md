@@ -4,29 +4,99 @@ Pacote de [Agent Skills](https://cursor.com/docs/context/skills) para o Cursor. 
 
 Todas as skills estão em [`skills/cursor/`](skills/cursor/) e usam `disable-model-invocation: true`: o agente só as aplica quando você as chama (por nome ou pelo gatilho descrito em cada uma).
 
+O contexto e os princípios por trás desse pacote estão no artigo [Engenharia Aumentada](docs/artigos/engenharia-aumentada.md) (rascunho da **v1.0**). O pacote de skills está na **v1.1** — ver [Changelog](#changelog).
+
 ## Fluxo
 
-```
-problem-qualify
-      ↓  (Pronto para Discovery? Sim)
-discovery
-      ↓  (Pronto para Planejamento? Sim)
-plan  ···  plan-slice  ···  adr-simplificado  (quando houver decisão arquitetural)
-      ↓  implementação
-delivery-summary  ···  document-technical-reference  (quando afetar onboarding)
+```mermaid
+flowchart TD
+  subgraph entrada["1 · Qualificação e Discovery"]
+    PQ["problem-qualify · v1.0<br/><i>score ≥ 80, sem critério vermelho</i>"]
+    D["discovery · v1.0"]
+    PQ -->|gate: Pronto para Discovery?| D
+  end
+
+  subgraph planejamento["2 · Planejamento"]
+    PlanChoice{"Como planejar?"}
+    P["plan · v1.0<br/><i>plano único</i>"]
+    PS["plan-slice · v1.1<br/><i>fatias isoladas · nova</i>"]
+    ADR["adr-simplificado · v1.0<br/><i>opcional</i>"]
+
+    D -->|gate: Pronto para Planejamento?| PlanChoice
+    PlanChoice -->|plano único| P
+    PlanChoice -->|execução fatiada| PS
+    P -.->|decisão arquitetural| ADR
+    PS -.->|decisão arquitetural| ADR
+  end
+
+  subgraph entrega["3 · Implementação e handoff"]
+    Impl["implementação"]
+    CR["code-review · v1.1<br/><i>gate de qualidade · nova</i>"]
+    DS["delivery-summary · v1.0"]
+    DTR["document-technical-reference · v1.0<br/><i>opcional</i>"]
+    PR["PR"]
+
+    P --> Impl
+    PS --> Impl
+    ADR -.-> Impl
+    Impl --> CR
+    CR -->|Bloqueado → volta| Impl
+    CR -->|Aprovado / com ressalvas| DS
+    DS -.->|afeta onboarding| DTR
+    DS --> PR
+  end
+
+  classDef gate fill:#FEF3C7,stroke:#D97706,stroke-width:2px,color:#92400E
+  classDef v10 fill:#DBEAFE,stroke:#2563EB,stroke-width:2px,color:#1E3A8A
+  classDef v11 fill:#EDE9FE,stroke:#7C3AED,stroke-width:3px,color:#5B21B6
+  classDef optional fill:#F3F4F6,stroke:#6B7280,stroke-width:1px,stroke-dasharray: 5 5,color:#374151
+  classDef success fill:#D1FAE5,stroke:#059669,stroke-width:2px,color:#065F46
+  classDef phase fill:#FFFFFF,stroke:#9CA3AF,stroke-width:1px,color:#111827
+
+  class PQ,D,P,DS v10
+  class ADR,DTR optional
+  class PS,CR v11
+  class PlanChoice gate
+  class Impl,PR success
+  class entrada,planejamento,entrega phase
 ```
 
-A ordem é a do ciclo de trabalho. Skills pontilhadas são opcionais e disparam só quando o contexto pede.
+**Legenda:** azul = skill **v1.0** · roxo = skill **v1.1** (nova) · amarelo = decisão / gate · verde = implementação / entrega · cinza tracejado = opcional
 
-| Etapa | Skill | Artefato | Persistência |
-|-------|--------|----------|--------------|
-| Qualificar o card | [`problem-qualify`](skills/cursor/problem-qualify/SKILL.md) | Score 0–100 + lacunas / contexto para Discovery | Só no chat |
-| Discovery | [`discovery`](skills/cursor/discovery/SKILL.md) | Documento de Discovery | Chat; arquivo em `docs/discovery/` se pronto para planejamento |
-| Plano técnico | [`plan`](skills/cursor/plan/SKILL.md) | Plano de implementação | Só no chat |
-| Plano fatiado | [`plan-slice`](skills/cursor/plan-slice/SKILL.md) | Plano em fatias de execução isoladas | Só no chat |
-| Decisão de arquitetura | [`adr-simplificado`](skills/cursor/adr-simplificado/SKILL.md) | ADR | `docs/adr/` |
-| Referência técnica | [`document-technical-reference`](skills/cursor/document-technical-reference/SKILL.md) | Tópicos de onboarding | `docs/references/` |
-| Handoff da entrega | [`delivery-summary`](skills/cursor/delivery-summary/SKILL.md) | Corpo do PR + resumo de negócio | Só no chat |
+A ordem é a do ciclo de trabalho. Setas pontilhadas disparam só quando o contexto pede.
+
+| Etapa | Skill | Desde | Artefato | Persistência |
+|-------|--------|-------|----------|--------------|
+| Qualificar o card | [`problem-qualify`](skills/cursor/problem-qualify/SKILL.md) | v1.0 | Score 0–100 + lacunas / contexto para Discovery | Só no chat |
+| Discovery | [`discovery`](skills/cursor/discovery/SKILL.md) | v1.0 | Documento de Discovery | Chat; arquivo em `docs/discovery/` se pronto para planejamento |
+| Plano técnico | [`plan`](skills/cursor/plan/SKILL.md) | v1.0 | Plano de implementação | Só no chat |
+| Plano fatiado | [`plan-slice`](skills/cursor/plan-slice/SKILL.md) | **v1.1** | Plano em fatias de execução isoladas | Só no chat |
+| Decisão de arquitetura | [`adr-simplificado`](skills/cursor/adr-simplificado/SKILL.md) | v1.0 | ADR | `docs/adr/` |
+| Code review | [`code-review`](skills/cursor/code-review/SKILL.md) | **v1.1** | Parecer com severidade + veredicto | Só no chat |
+| Referência técnica | [`document-technical-reference`](skills/cursor/document-technical-reference/SKILL.md) | v1.0 | Tópicos de onboarding | `docs/references/` |
+| Handoff da entrega | [`delivery-summary`](skills/cursor/delivery-summary/SKILL.md) | v1.0 | Corpo do PR + resumo de negócio | Só no chat |
+
+## Changelog
+
+### v1.1
+
+Novas skills no fluxo (ainda não descritas no [artigo v1.0](docs/artigos/engenharia-aumentada.md)):
+
+- **`plan-slice`** — plano técnico fatiado em unidades de execução isoladas (alternativa/complemento ao `plan`).
+- **`code-review`** — gate de qualidade entre implementação e `delivery-summary`.
+
+### v1.0
+
+Skills cobertas pelo artigo [Engenharia Aumentada](docs/artigos/engenharia-aumentada.md):
+
+- `problem-qualify`
+- `discovery`
+- `plan`
+- `adr-simplificado`
+- `delivery-summary`
+- `document-technical-reference`
+
+Workflow narrado na v1.0: **Qualificar → Descobrir → Planejar → Implementar → Entregar → Preservar conhecimento**.
 
 ---
 
@@ -98,6 +168,18 @@ Cria ou revisa documentação de referência técnica para onboarding.
 - Destino típico: `docs/references/`. Quando fizer sentido, o README do projeto deve linkar direto para o arquivo.
 
 **Quando usar:** documentar, atualizar ou revisar uma referência a partir de um caminho ou símbolo do projeto.
+
+### [`code-review`](skills/cursor/code-review/SKILL.md)
+
+Revisa a implementação **antes** do `delivery-summary`, como gate do pipeline de entrega.
+
+- Checklist dual-layer (universal + contextual), cruzando com Discovery/Plan quando existirem.
+- Classifica achados por severidade: BLOQUEADOR / AVISO / SUGESTÃO.
+- Veredicto: **Aprovado** / **Aprovado com ressalvas** / **Bloqueado**.
+- **Não** reescreve código, não commita e não gera corpo de PR.
+- Inclui referência de anti-padrões em `anti-patterns.md`.
+
+**Quando usar:** code review, revisão de código, validar mudanças antes do PR.
 
 ### [`delivery-summary`](skills/cursor/delivery-summary/SKILL.md)
 
